@@ -7,70 +7,46 @@ on:
 
 jobs:
   lint:
-    name: Lint Go Code
     runs-on: self-hosted
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Check formatting
-        run: test -z "$(gofmt -l .)"
-
-      - name: Run go vet
-        run: go vet ./...
+      - run: go mod download
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
 
   build:
-    name: Build Go App
     runs-on: self-hosted
     needs: lint
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
-
-      - name: Download dependencies
-        run: go mod download
-
-      - name: Build application
-        run: go build -o app .
+          go-version: '1.26'
+      - run: go mod download
+      - run: go build -o app .
 
   docker:
-    name: Build Docker Image
     runs-on: self-hosted
     needs: build
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: docker build -t simple-go-api .
+      - uses: actions/checkout@v4
+      - run: docker build -t go .
 
   deploy:
-    name: Deploy App
     runs-on: self-hosted
     needs: docker
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Stop old container
-        run: docker rm -f simple-go-api || true
-
-      - name: Run new container
-        run: docker run -d --name simple-go-api --restart always -p 8080:8080 --env-file .env simple-go-api
+      - uses: actions/checkout@v4
+      - run: docker rm -f go || true
+      - run: |
+          docker run -d --name go --restart always -p 8080:8080 \
+            -e DB_HOST=${{ secrets.DB_HOST }} \
+            -e DB_PORT=${{ secrets.DB_PORT }} \
+            -e DB_USER=${{ secrets.DB_USER }} \
+            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            -e DB_NAME=${{ secrets.DB_NAME }} \
+            -e DB_SSLMODE=${{ secrets.DB_SSLMODE }} \
+            go
